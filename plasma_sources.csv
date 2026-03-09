@@ -1,6 +1,0 @@
-﻿Source_ID;design;Ion_Energy_eV;Current_Density_mAcm2;Power_W;Pressure_mTorr
-LS01;LS;110;4;350;5
-LS02;LS;120;6;350;5
-DN01;DN;140;3;350;5
-IS01;IS;95;5;300;4
-RS01;RS;150;2;400;6

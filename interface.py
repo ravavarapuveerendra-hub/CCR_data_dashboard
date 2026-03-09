@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 st.image("CCRLogo.png", width=200)
-st.title("RF Plasma Source Comparison Dashboard")
+st.title("RF Plasma Sources Data Dashboard")
 
 # -----------------------------
 # Load Excel file automatically

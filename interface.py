@@ -5,7 +5,7 @@ import plotly.express as px
 st.title("CCR GmbH : RF Plasma Source Comparison Dashboard")
 
 # Read the csv file
-data = pd.read_excel(r"C:\Users\V.Ravavarapu\PycharmProjects\PythonProject_data\plasma_sources.xlsx")
+data = pd.read_excel("plasma_sources.xlsx")
 
 # Clean column names
 data.columns = data.columns.str.strip().str.lower()

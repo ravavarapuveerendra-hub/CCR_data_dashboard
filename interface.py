@@ -137,25 +137,28 @@ plot_options = st.sidebar.multiselect(
 if not filtered_data.empty:
 
     if "ICD vs Pressure" in plot_options:
-        st.subheader("Ion Current Density vs Pressure")
-        fig = px.scatter(
-            filtered_data,
-            x="pressure",
-            y="ion_current_density",
-            color="source_id",
-            hover_data=["rf_power", "coil_current", "primary_steps", "secondary_steps"]
-        )
-        fig.update_xaxes(
-            title="Pressure (mbar)",
-            type="log",
-            tickformat=".2e",  # exponential with 2 digits
-            range=[-5, -2]     # flexible from 1e-5 to 1e-2
-        )
-        fig.update_yaxes(
-            title="Ion Current Density (mA/cm²)",
-            range=[0, filtered_data["ion_current_density"].max() * 1.1]
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Ion Current Density vs Pressure")
+    fig = px.scatter(
+        filtered_data,
+        x="pressure",
+        y="ion_current_density",
+        color="source_id",
+        hover_data=["rf_power", "coil_current", "primary_steps", "secondary_steps"]
+    )
+    # Autoscale x-axis based on data
+    pressure_min = filtered_data["pressure"].min()
+    pressure_max = filtered_data["pressure"].max()
+    fig.update_xaxes(
+        title="Pressure (mbar)",
+        type="log",
+        tickformat=".2e",
+        range=[pd.np.log10(pressure_min), pd.np.log10(pressure_max)]
+    )
+    fig.update_yaxes(
+        title="Ion Current Density (mA/cm²)",
+        range=[0, filtered_data["ion_current_density"].max() * 1.1]
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
     if "IE vs Pressure" in plot_options:
         st.subheader("Ion Energy vs Pressure")

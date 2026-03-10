@@ -26,40 +26,35 @@ for file_path in all_files:
         else:
             df = pd.read_csv(file_path)
 
-        # Ensure all column names are strings
+        # Ensure column names are strings
         df.columns = [str(c) for c in df.columns]
         df.columns = [c.strip().lower() for c in df.columns]
 
-        # Standardize expected column names
+        # Standardize column names
         col_map = {
-            "plasma source type": "source_type",
-            "design": "design",
-            "version": "version",
-            "source id": "source_id",
-            "pressure (mbar)": "pressure",
             "pressure": "pressure",
-            "ion current density": "ion_current_density",
-            "ion current density (ma/cm2)": "ion_current_density",
-            "ion energy": "ion_energy",
-            "ion energy (ev)": "ion_energy",
-            "rf power (w)": "rf_power",
             "rf power": "rf_power",
             "primary": "primary_steps",
             "secondary": "secondary_steps",
+            "icd": "ion_current_density",
+            "ie": "ion_energy"
         }
         df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
 
-        # Add a source_id from filename if missing
-        if "source_id" not in df.columns:
-            df["source_id"] = os.path.splitext(os.path.basename(file_path))[0]
+        # Extract metadata from filename
+        fname = os.path.splitext(os.path.basename(file_path))[0]  # e.g., "COPRA_DN_160_01"
+        parts = fname.split("_")
+        df["source_type"] = parts[0] + " " + parts[1] if len(parts) > 1 else parts[0]
+        df["design"] = parts[1] if len(parts) > 1 else ""
+        df["version"] = parts[2] if len(parts) > 2 else ""
+        df["source_id"] = fname
 
         all_data.append(df)
     except Exception as e:
         st.error(f"Error reading {file_path}: {e}")
 
-# Combine all source data
+# Combine all data
 data = pd.concat(all_data, ignore_index=True)
-
 # -----------------------------
 # Sidebar Filters
 # -----------------------------

@@ -6,7 +6,7 @@ st.image("CCRLogo.png", width=200)
 st.title("RF Plasma Sources Data Dashboard")
 
 # -----------------------------
-# Load Excel file automatically
+# Load Excel file
 data = pd.read_excel("plasma_sources.xlsx")
 
 # Clean column names
@@ -29,6 +29,7 @@ col_map = {
     "primary steps": "primary_steps",
     "secondary steps": "secondary_steps"
 }
+
 data = data.rename(columns={k: v for k, v in col_map.items() if k in data.columns})
 
 # -----------------------------
@@ -37,32 +38,39 @@ st.sidebar.header("Filters")
 
 source_type_selected = st.sidebar.multiselect(
     "Select Plasma Source Type",
-    options=data["source_type"].unique()
+    options=data["source_type"].unique(),
+    key="source_type"
 )
+
+design_options = data[data["source_type"].isin(source_type_selected)]["design"].unique() if source_type_selected else []
 
 design_selected = st.sidebar.multiselect(
     "Select Design",
-    options=data[data["source_type"].isin(source_type_selected)]["design"].unique()
-    if source_type_selected else []
+    options=design_options,
+    key="design"
 )
+
+version_options = data[
+    (data["source_type"].isin(source_type_selected)) &
+    (data["design"].isin(design_selected))
+]["version"].unique() if design_selected else []
 
 version_selected = st.sidebar.multiselect(
     "Select Version",
-    options=data[
-        (data["source_type"].isin(source_type_selected)) &
-        (data["design"].isin(design_selected))
-    ]["version"].unique()
-    if source_type_selected and design_selected else []
+    options=version_options,
+    key="version"
 )
+
+source_id_options = data[
+    (data["source_type"].isin(source_type_selected)) &
+    (data["design"].isin(design_selected)) &
+    (data["version"].isin(version_selected))
+]["source_id"].unique() if version_selected else []
 
 source_id_selected = st.sidebar.multiselect(
     "Select Source ID",
-    options=data[
-        (data["source_type"].isin(source_type_selected)) &
-        (data["design"].isin(design_selected)) &
-        (data["version"].isin(version_selected))
-    ]["source_id"].unique()
-    if source_type_selected and design_selected and version_selected else []
+    options=source_id_options,
+    key="source_id"
 )
 
 # -----------------------------
@@ -89,14 +97,14 @@ plot_options = st.sidebar.multiselect(
         "ICD vs Pressure",
         "IE vs Pressure",
         "Primary vs Secondary Matching"
-    ]
+    ],
+    key="plots"
 )
 
 # -----------------------------
 # Plotting
 if not filtered_data.empty:
 
-    # ICD vs Pressure
     if "ICD vs Pressure" in plot_options:
 
         st.subheader("Ion Current Density vs Pressure")
@@ -122,7 +130,6 @@ if not filtered_data.empty:
 
         st.plotly_chart(fig, use_container_width=True)
 
-    # IE vs Pressure
     if "IE vs Pressure" in plot_options:
 
         st.subheader("Ion Energy vs Pressure")
@@ -148,7 +155,6 @@ if not filtered_data.empty:
 
         st.plotly_chart(fig, use_container_width=True)
 
-    # Matching map
     if "Primary vs Secondary Matching" in plot_options:
 
         st.subheader("Matching Map (Primary vs Secondary)")

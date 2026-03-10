@@ -35,6 +35,7 @@ for file_path in all_files:
         col_map = {
             "pressure": "pressure",
             "rf power": "rf_power",
+            "coil current": "coil_current",
             "primary": "primary_steps",
             "secondary": "secondary_steps",
             "icd": "ion_current_density",
@@ -62,14 +63,12 @@ data = pd.concat(all_data, ignore_index=True)
 # -----------------------------
 st.sidebar.header("Filters")
 
-# Source Type filter
 source_type_selected = st.sidebar.multiselect(
     "Select Plasma Source Type",
     options=data["source_type"].dropna().unique(),
     key="source_type"
 )
 
-# Design filter
 design_options = data[data["source_type"].isin(source_type_selected)]["design"].dropna().unique() if source_type_selected else []
 design_selected = st.sidebar.multiselect(
     "Select Design",
@@ -77,7 +76,6 @@ design_selected = st.sidebar.multiselect(
     key="design"
 )
 
-# Version filter
 version_options = data[
     (data["source_type"].isin(source_type_selected)) &
     (data["design"].isin(design_selected))
@@ -88,7 +86,6 @@ version_selected = st.sidebar.multiselect(
     key="version"
 )
 
-# Source ID filter
 source_id_options = data[
     (data["source_type"].isin(source_type_selected)) &
     (data["design"].isin(design_selected)) &
@@ -111,11 +108,12 @@ filtered_data = data[
 ] if source_id_selected else pd.DataFrame()
 
 # -----------------------------
-# Show key info
+# Show key info (RF Power & Coil Current only)
 # -----------------------------
 if not filtered_data.empty:
     st.subheader("Selected Sources Info")
-    st.write(filtered_data.groupby("source_id")[["rf_power", "primary_steps", "secondary_steps"]].agg("first"))
+    info_cols = [col for col in ["rf_power", "coil_current"] if col in filtered_data.columns]
+    st.write(filtered_data.groupby("source_id")[info_cols].agg("first"))
 
 # -----------------------------
 # Plot selection
@@ -143,18 +141,23 @@ if not filtered_data.empty:
             x="pressure",
             y="ion_current_density",
             color="source_id",
-            hover_data=["rf_power", "primary_steps", "secondary_steps"]
+            hover_data=["rf_power", "coil_current"]
         )
-        # Autoscale x-axis in log format
+
+        # Autoscale x-axis in log format with nice ticks
         pressure_min = filtered_data["pressure"].min()
         pressure_max = filtered_data["pressure"].max()
         fig.update_xaxes(
             title="Pressure (mbar)",
             type="log",
             tickformat=".2e",
-            range=[np.log10(max(pressure_min, 1e-6)), np.log10(pressure_max)]
+            exponentformat="e",
+            dtick=1  # ensures spaced ticks for log scale
         )
-        fig.update_yaxes(title="Ion Current Density (mA/cm²)", range=[0, filtered_data["ion_current_density"].max()*1.1])
+        fig.update_yaxes(
+            title="Ion Current Density (mA/cm²)",
+            range=[0, filtered_data["ion_current_density"].max()*1.1]
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     if "IE vs Pressure" in plot_options:
@@ -164,7 +167,7 @@ if not filtered_data.empty:
             x="pressure",
             y="ion_energy",
             color="source_id",
-            hover_data=["rf_power", "primary_steps", "secondary_steps"]
+            hover_data=["rf_power", "coil_current"]
         )
         pressure_min = filtered_data["pressure"].min()
         pressure_max = filtered_data["pressure"].max()
@@ -172,9 +175,13 @@ if not filtered_data.empty:
             title="Pressure (mbar)",
             type="log",
             tickformat=".2e",
-            range=[np.log10(max(pressure_min, 1e-6)), np.log10(pressure_max)]
+            exponentformat="e",
+            dtick=1
         )
-        fig.update_yaxes(title="Ion Energy (eV)", range=[0, filtered_data["ion_energy"].max()*1.1])
+        fig.update_yaxes(
+            title="Ion Energy (eV)",
+            range=[0, filtered_data["ion_energy"].max()*1.1]
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     if "Primary vs Secondary Matching" in plot_options:

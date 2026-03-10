@@ -48,26 +48,21 @@ design_selected = st.sidebar.multiselect(
 
 version_selected = st.sidebar.multiselect(
     "Select Version",
-    options=data[(data["source_type"].isin(source_type_selected)) &
-                 (data["design"].isin(design_selected))]["version"].unique()
+    options=data[
+        (data["source_type"].isin(source_type_selected)) &
+        (data["design"].isin(design_selected))
+    ]["version"].unique()
     if source_type_selected and design_selected else []
 )
 
 source_id_selected = st.sidebar.multiselect(
     "Select Source ID",
-    options=data[(data["source_type"].isin(source_type_selected)) &
-                 (data["design"].isin(design_selected)) &
-                 (data["version"].isin(version_selected))]["source_id"].unique()
+    options=data[
+        (data["source_type"].isin(source_type_selected)) &
+        (data["design"].isin(design_selected)) &
+        (data["version"].isin(version_selected))
+    ]["source_id"].unique()
     if source_type_selected and design_selected and version_selected else []
-)
-
-# -----------------------------
-# Comparison level
-st.sidebar.header("Comparison Settings")
-
-compare_by = st.sidebar.selectbox(
-    "Compare By",
-    ["source_id", "design", "version", "source_type"]
 )
 
 # -----------------------------
@@ -110,8 +105,8 @@ if not filtered_data.empty:
             filtered_data,
             x="pressure",
             y="ion_current_density",
-            color=compare_by,
-            hover_data=["source_id","rf_power","primary_steps","secondary_steps"]
+            color="source_id",
+            hover_data=["rf_power", "primary_steps", "secondary_steps"]
         )
 
         fig.update_xaxes(
@@ -136,8 +131,8 @@ if not filtered_data.empty:
             filtered_data,
             x="pressure",
             y="ion_energy",
-            color=compare_by,
-            hover_data=["source_id","rf_power","primary_steps","secondary_steps"]
+            color="source_id",
+            hover_data=["rf_power", "primary_steps", "secondary_steps"]
         )
 
         fig.update_xaxes(
@@ -153,7 +148,7 @@ if not filtered_data.empty:
 
         st.plotly_chart(fig, use_container_width=True)
 
-    # Matching Map
+    # Matching map
     if "Primary vs Secondary Matching" in plot_options:
 
         st.subheader("Matching Map (Primary vs Secondary)")
@@ -162,8 +157,8 @@ if not filtered_data.empty:
             filtered_data,
             x="primary_steps",
             y="secondary_steps",
-            color=compare_by,
-            hover_data=["pressure","rf_power","source_id"]
+            color="source_id",
+            hover_data=["pressure", "rf_power"]
         )
 
         fig.update_xaxes(

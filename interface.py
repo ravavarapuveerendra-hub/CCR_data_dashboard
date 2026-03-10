@@ -152,7 +152,7 @@ if not filtered_data.empty:
             type="log",
             tickformat=".2e",
             exponentformat="e",
-            dtick=1  # ensures spaced ticks for log scale
+            dtick=0.2  # ensures spaced ticks for log scale
         )
         fig.update_yaxes(
             title="Ion Current Density (mA/cm²)",
@@ -176,7 +176,7 @@ if not filtered_data.empty:
             type="log",
             tickformat=".2e",
             exponentformat="e",
-            dtick=1
+            dtick=0.2
         )
         fig.update_yaxes(
             title="Ion Energy (eV)",

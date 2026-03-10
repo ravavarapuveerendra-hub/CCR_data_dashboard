@@ -2,103 +2,180 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+from glob import glob
 
-# -----------------------------
-# App title & logo
-# -----------------------------
+st.set_page_config(layout="wide")
 st.image("CCRLogo.png", width=200)
 st.title("RF Plasma Sources Data Dashboard")
 
 # -----------------------------
-# Load all Excel files from 'data/' folder
+# Load all Excel/CSV files from data folder
 # -----------------------------
-data_folder = "data"
+data_folder = "data"  # make sure this folder exists and has your files
+all_files = glob(os.path.join(data_folder, "*.xlsx")) + glob(os.path.join(data_folder, "*.csv"))
+
+if not all_files:
+    st.warning("No data files found in the 'data' folder. Please add Excel/CSV files for sources.")
+    st.stop()
+
 all_data = []
+for file_path in all_files:
+    try:
+        if file_path.endswith(".xlsx"):
+            df = pd.read_excel(file_path)
+        else:
+            df = pd.read_csv(file_path)
 
-if os.path.exists(data_folder):
-    for file_name in os.listdir(data_folder):
-        if file_name.endswith((".xlsx", ".csv")):
-            file_path = os.path.join(data_folder, file_name)
-            # Read Excel or CSV
-            if file_name.endswith(".xlsx"):
-                df = pd.read_excel(file_path)
-            else:
-                df = pd.read_csv(file_path)
+        # Ensure all column names are strings
+        df.columns = [str(c) for c in df.columns]
+        df.columns = [c.strip().lower() for c in df.columns]
 
-            # Standardize columns
-            df.columns = df.columns.str.strip().str.lower()
-            col_map = {
-                "gas": "gas",
-                "coil current": "coil_current",
-                "pressure": "pressure",
-                "rf power": "rf_power",
-                "primary": "primary_steps",
-                "secondary": "secondary_steps",
-                "icd": "ion_current_density",
-                "ie": "ion_energy"
-            }
-            df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
+        # Standardize expected column names
+        col_map = {
+            "plasma source type": "source_type",
+            "design": "design",
+            "version": "version",
+            "source id": "source_id",
+            "pressure (mbar)": "pressure",
+            "pressure": "pressure",
+            "ion current density": "ion_current_density",
+            "ion current density (ma/cm2)": "ion_current_density",
+            "ion energy": "ion_energy",
+            "ion energy (ev)": "ion_energy",
+            "rf power (w)": "rf_power",
+            "rf power": "rf_power",
+            "primary": "primary_steps",
+            "secondary": "secondary_steps",
+        }
+        df = df.rename(columns={k: v for k, v in col_map.items() if k in df.columns})
 
-            # Source ID from filename
-            df["source_id"] = os.path.splitext(file_name)[0]
+        # Add a source_id from filename if missing
+        if "source_id" not in df.columns:
+            df["source_id"] = os.path.splitext(os.path.basename(file_path))[0]
 
-            all_data.append(df)
+        all_data.append(df)
+    except Exception as e:
+        st.error(f"Error reading {file_path}: {e}")
 
-    data = pd.concat(all_data, ignore_index=True)
-else:
-    st.warning(f"Data folder '{data_folder}' not found. Please push Excel files to Git.")
-    data = pd.DataFrame()
+# Combine all source data
+data = pd.concat(all_data, ignore_index=True)
 
 # -----------------------------
-# Sidebar filters
+# Sidebar Filters
 # -----------------------------
-if not data.empty:
-    st.sidebar.header("Filters")
-    source_ids = st.sidebar.multiselect("Select Source ID", options=data["source_id"].unique())
-    filtered_data = data[data["source_id"].isin(source_ids)] if source_ids else pd.DataFrame()
+st.sidebar.header("Filters")
 
-    plot_options = st.sidebar.multiselect(
-        "Choose plots",
-        options=[
-            "ICD vs Pressure",
-            "IE vs Pressure",
-            "Primary vs Secondary Matching"
-        ]
-    )
+# Source Type filter
+source_type_selected = st.sidebar.multiselect(
+    "Select Plasma Source Type",
+    options=data["source_type"].dropna().unique(),
+    key="source_type"
+)
 
-    # -----------------------------
-    # Show filtered dataset
-    # -----------------------------
-    st.subheader("Filtered Dataset")
-    st.dataframe(filtered_data)
+# Design filter
+design_options = data[data["source_type"].isin(source_type_selected)]["design"].dropna().unique() if source_type_selected else []
+design_selected = st.sidebar.multiselect(
+    "Select Design",
+    options=design_options,
+    key="design"
+)
 
-    # -----------------------------
-    # Plotting
-    # -----------------------------
-    if not filtered_data.empty:
-        if "ICD vs Pressure" in plot_options:
-            st.subheader("Ion Current Density vs Pressure")
-            fig = px.scatter(filtered_data, x="pressure", y="ion_current_density",
-                             color="source_id", hover_data=["rf_power", "primary_steps", "secondary_steps"])
-            fig.update_xaxes(title="Pressure (mbar)", type="log", range=[-5, -2])
-            fig.update_yaxes(title="Ion Current Density (mA/cm²)", range=[0, filtered_data["ion_current_density"].max()*1.1])
-            st.plotly_chart(fig, use_container_width=True)
+# Version filter
+version_options = data[
+    (data["source_type"].isin(source_type_selected)) &
+    (data["design"].isin(design_selected))
+]["version"].dropna().unique() if design_selected else []
+version_selected = st.sidebar.multiselect(
+    "Select Version",
+    options=version_options,
+    key="version"
+)
 
-        if "IE vs Pressure" in plot_options:
-            st.subheader("Ion Energy vs Pressure")
-            fig = px.scatter(filtered_data, x="pressure", y="ion_energy",
-                             color="source_id", hover_data=["rf_power", "primary_steps", "secondary_steps"])
-            fig.update_xaxes(title="Pressure (mbar)", type="log", range=[-5, -2])
-            fig.update_yaxes(title="Ion Energy (eV)", range=[0, filtered_data["ion_energy"].max()*1.1])
-            st.plotly_chart(fig, use_container_width=True)
+# Source ID filter
+source_id_options = data[
+    (data["source_type"].isin(source_type_selected)) &
+    (data["design"].isin(design_selected)) &
+    (data["version"].isin(version_selected))
+]["source_id"].dropna().unique() if version_selected else []
+source_id_selected = st.sidebar.multiselect(
+    "Select Source ID",
+    options=source_id_options,
+    key="source_id"
+)
 
-        if "Primary vs Secondary Matching" in plot_options:
-            st.subheader("Primary vs Secondary Matching")
-            fig = px.scatter(filtered_data, x="primary_steps", y="secondary_steps",
-                             color="source_id", hover_data=["pressure", "rf_power"])
-            fig.update_xaxes(title="Primary Steps", range=[0, 2160])
-            fig.update_yaxes(title="Secondary Steps", range=[0, 2160])
-            st.plotly_chart(fig, use_container_width=True)
+# -----------------------------
+# Filter data based on selections
+# -----------------------------
+filtered_data = data[
+    (data["source_type"].isin(source_type_selected)) &
+    (data["design"].isin(design_selected)) &
+    (data["version"].isin(version_selected)) &
+    (data["source_id"].isin(source_id_selected))
+] if source_id_selected else pd.DataFrame()
+
+# -----------------------------
+# Show dataset
+# -----------------------------
+st.subheader("Filtered Dataset")
+st.dataframe(filtered_data)
+
+# -----------------------------
+# Plot selection
+# -----------------------------
+st.sidebar.header("Select Plots")
+plot_options = st.sidebar.multiselect(
+    "Choose plots",
+    options=[
+        "ICD vs Pressure",
+        "IE vs Pressure",
+        "Primary vs Secondary Matching"
+    ],
+    key="plots"
+)
+
+# -----------------------------
+# Plotting
+# -----------------------------
+if not filtered_data.empty:
+
+    if "ICD vs Pressure" in plot_options:
+        st.subheader("Ion Current Density vs Pressure")
+        fig = px.scatter(
+            filtered_data,
+            x="pressure",
+            y="ion_current_density",
+            color="source_id",
+            hover_data=["rf_power", "primary_steps", "secondary_steps"]
+        )
+        fig.update_xaxes(title="Pressure (mbar)", type="log", range=[-5, -2])
+        fig.update_yaxes(title="Ion Current Density (mA/cm²)", range=[0, filtered_data["ion_current_density"].max()*1.1])
+        st.plotly_chart(fig, use_container_width=True)
+
+    if "IE vs Pressure" in plot_options:
+        st.subheader("Ion Energy vs Pressure")
+        fig = px.scatter(
+            filtered_data,
+            x="pressure",
+            y="ion_energy",
+            color="source_id",
+            hover_data=["rf_power", "primary_steps", "secondary_steps"]
+        )
+        fig.update_xaxes(title="Pressure (mbar)", type="log", range=[-5, -2])
+        fig.update_yaxes(title="Ion Energy (eV)", range=[0, filtered_data["ion_energy"].max()*1.1])
+        st.plotly_chart(fig, use_container_width=True)
+
+    if "Primary vs Secondary Matching" in plot_options:
+        st.subheader("Matching Map (Primary vs Secondary)")
+        fig = px.scatter(
+            filtered_data,
+            x="primary_steps",
+            y="secondary_steps",
+            color="source_id",
+            hover_data=["pressure", "rf_power"]
+        )
+        fig.update_xaxes(title="Primary Matching Steps", range=[0, 2160])
+        fig.update_yaxes(title="Secondary Matching Steps", range=[0, 2160])
+        st.plotly_chart(fig, use_container_width=True)
 
 else:
-    st.info("No data found. Push your Excel files to the 'data/' folder.")
+    st.info("Select filters and plots to see comparison charts.")

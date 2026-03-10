@@ -161,25 +161,28 @@ if not filtered_data.empty:
     st.plotly_chart(fig, use_container_width=True)
 
     if "IE vs Pressure" in plot_options:
-        st.subheader("Ion Energy vs Pressure")
-        fig = px.scatter(
-            filtered_data,
-            x="pressure",
-            y="ion_energy",
-            color="source_id",
-            hover_data=["rf_power", "coil_current", "primary_steps", "secondary_steps"]
-        )
-        fig.update_xaxes(
-            title="Pressure (mbar)",
-            type="log",
-            tickformat=".2e",  # exponential with 2 digits
-            range=[-5, -2]     # flexible from 1e-5 to 1e-2
-        )
-        fig.update_yaxes(
-            title="Ion Energy (eV)",
-            range=[0, filtered_data["ion_energy"].max() * 1.1]
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    st.subheader("Ion Energy vs Pressure")
+    fig = px.scatter(
+        filtered_data,
+        x="pressure",
+        y="ion_energy",
+        color="source_id",
+        hover_data=["rf_power", "coil_current", "primary_steps", "secondary_steps"]
+    )
+    # Autoscale x-axis
+    pressure_min = filtered_data["pressure"].min()
+    pressure_max = filtered_data["pressure"].max()
+    fig.update_xaxes(
+        title="Pressure (mbar)",
+        type="log",
+        tickformat=".2e",
+        range=[pd.np.log10(pressure_min), pd.np.log10(pressure_max)]
+    )
+    fig.update_yaxes(
+        title="Ion Energy (eV)",
+        range=[0, filtered_data["ion_energy"].max() * 1.1]
+    )
+    st.plotly_chart(fig, use_container_width=True)
 
     if "Primary vs Secondary Matching" in plot_options:
         st.subheader("Matching Map (Primary vs Secondary)")

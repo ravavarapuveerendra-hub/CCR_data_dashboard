@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import os
 from glob import glob
@@ -11,7 +12,7 @@ st.title("RF Plasma Sources Data Dashboard")
 # -----------------------------
 # Load all Excel/CSV files from data folder
 # -----------------------------
-data_folder = "data"  # folder containing your source files
+data_folder = "data"  # make sure this folder exists and has your files
 all_files = glob(os.path.join(data_folder, "*.xlsx")) + glob(os.path.join(data_folder, "*.csv"))
 
 if not all_files:
@@ -21,6 +22,7 @@ if not all_files:
 all_data = []
 for file_path in all_files:
     try:
+        # Read file
         if file_path.endswith(".xlsx"):
             df = pd.read_excel(file_path)
         else:
@@ -33,7 +35,6 @@ for file_path in all_files:
         col_map = {
             "pressure": "pressure",
             "rf power": "rf_power",
-            "coil current": "coil_current",
             "primary": "primary_steps",
             "secondary": "secondary_steps",
             "icd": "ion_current_density",
@@ -110,12 +111,11 @@ filtered_data = data[
 ] if source_id_selected else pd.DataFrame()
 
 # -----------------------------
-# Show key source info (coil current, RF power)
+# Show key info
 # -----------------------------
 if not filtered_data.empty:
     st.subheader("Selected Sources Info")
-    info_cols = ["source_id", "coil_current", "rf_power"]
-    st.table(filtered_data[info_cols].drop_duplicates().reset_index(drop=True))
+    st.write(filtered_data.groupby("source_id")[["rf_power", "primary_steps", "secondary_steps"]].agg("first"))
 
 # -----------------------------
 # Plot selection
@@ -143,21 +143,18 @@ if not filtered_data.empty:
             x="pressure",
             y="ion_current_density",
             color="source_id",
-            hover_data=["rf_power", "coil_current", "primary_steps", "secondary_steps"]
+            hover_data=["rf_power", "primary_steps", "secondary_steps"]
         )
-        # Autoscale x-axis based on filtered data
+        # Autoscale x-axis in log format
         pressure_min = filtered_data["pressure"].min()
         pressure_max = filtered_data["pressure"].max()
         fig.update_xaxes(
             title="Pressure (mbar)",
             type="log",
             tickformat=".2e",
-            range=[pd.np.log10(pressure_min), pd.np.log10(pressure_max)]
+            range=[np.log10(max(pressure_min, 1e-6)), np.log10(pressure_max)]
         )
-        fig.update_yaxes(
-            title="Ion Current Density (mA/cm²)",
-            range=[0, filtered_data["ion_current_density"].max() * 1.1]
-        )
+        fig.update_yaxes(title="Ion Current Density (mA/cm²)", range=[0, filtered_data["ion_current_density"].max()*1.1])
         st.plotly_chart(fig, use_container_width=True)
 
     if "IE vs Pressure" in plot_options:
@@ -167,21 +164,17 @@ if not filtered_data.empty:
             x="pressure",
             y="ion_energy",
             color="source_id",
-            hover_data=["rf_power", "coil_current", "primary_steps", "secondary_steps"]
+            hover_data=["rf_power", "primary_steps", "secondary_steps"]
         )
-        # Autoscale x-axis
         pressure_min = filtered_data["pressure"].min()
         pressure_max = filtered_data["pressure"].max()
         fig.update_xaxes(
             title="Pressure (mbar)",
             type="log",
             tickformat=".2e",
-            range=[pd.np.log10(pressure_min), pd.np.log10(pressure_max)]
+            range=[np.log10(max(pressure_min, 1e-6)), np.log10(pressure_max)]
         )
-        fig.update_yaxes(
-            title="Ion Energy (eV)",
-            range=[0, filtered_data["ion_energy"].max() * 1.1]
-        )
+        fig.update_yaxes(title="Ion Energy (eV)", range=[0, filtered_data["ion_energy"].max()*1.1])
         st.plotly_chart(fig, use_container_width=True)
 
     if "Primary vs Secondary Matching" in plot_options:

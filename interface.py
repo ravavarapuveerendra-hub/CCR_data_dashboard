@@ -11,7 +11,7 @@ st.title("RF Plasma Sources Data Dashboard")
 # -----------------------------
 # Load all Excel/CSV files from data folder
 # -----------------------------
-data_folder = "data"  # make sure this folder exists and has your files
+data_folder = "data"  # folder containing your source files
 all_files = glob(os.path.join(data_folder, "*.xlsx")) + glob(os.path.join(data_folder, "*.csv"))
 
 if not all_files:
@@ -26,14 +26,14 @@ for file_path in all_files:
         else:
             df = pd.read_csv(file_path)
 
-        # Ensure column names are strings
-        df.columns = [str(c) for c in df.columns]
-        df.columns = [c.strip().lower() for c in df.columns]
+        # Ensure column names are strings and lowercase
+        df.columns = [str(c).strip().lower() for c in df.columns]
 
         # Standardize column names
         col_map = {
             "pressure": "pressure",
             "rf power": "rf_power",
+            "coil current": "coil_current",
             "primary": "primary_steps",
             "secondary": "secondary_steps",
             "icd": "ion_current_density",
@@ -55,6 +55,7 @@ for file_path in all_files:
 
 # Combine all data
 data = pd.concat(all_data, ignore_index=True)
+
 # -----------------------------
 # Sidebar Filters
 # -----------------------------
@@ -109,10 +110,12 @@ filtered_data = data[
 ] if source_id_selected else pd.DataFrame()
 
 # -----------------------------
-# Show dataset
+# Show key source info (coil current, RF power)
 # -----------------------------
-st.subheader("Filtered Dataset")
-st.dataframe(filtered_data)
+if not filtered_data.empty:
+    st.subheader("Selected Sources Info")
+    info_cols = ["source_id", "coil_current", "rf_power"]
+    st.table(filtered_data[info_cols].drop_duplicates().reset_index(drop=True))
 
 # -----------------------------
 # Plot selection
@@ -140,10 +143,18 @@ if not filtered_data.empty:
             x="pressure",
             y="ion_current_density",
             color="source_id",
-            hover_data=["rf_power", "primary_steps", "secondary_steps"]
+            hover_data=["rf_power", "coil_current", "primary_steps", "secondary_steps"]
         )
-        fig.update_xaxes(title="Pressure (mbar)", type="log", range=[-5, -2])
-        fig.update_yaxes(title="Ion Current Density (mA/cm²)", range=[0, filtered_data["ion_current_density"].max()*1.1])
+        fig.update_xaxes(
+            title="Pressure (mbar)",
+            type="log",
+            tickformat=".2e",  # exponential with 2 digits
+            range=[-5, -2]     # flexible from 1e-5 to 1e-2
+        )
+        fig.update_yaxes(
+            title="Ion Current Density (mA/cm²)",
+            range=[0, filtered_data["ion_current_density"].max() * 1.1]
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     if "IE vs Pressure" in plot_options:
@@ -153,10 +164,18 @@ if not filtered_data.empty:
             x="pressure",
             y="ion_energy",
             color="source_id",
-            hover_data=["rf_power", "primary_steps", "secondary_steps"]
+            hover_data=["rf_power", "coil_current", "primary_steps", "secondary_steps"]
         )
-        fig.update_xaxes(title="Pressure (mbar)", type="log", range=[-5, -2])
-        fig.update_yaxes(title="Ion Energy (eV)", range=[0, filtered_data["ion_energy"].max()*1.1])
+        fig.update_xaxes(
+            title="Pressure (mbar)",
+            type="log",
+            tickformat=".2e",  # exponential with 2 digits
+            range=[-5, -2]     # flexible from 1e-5 to 1e-2
+        )
+        fig.update_yaxes(
+            title="Ion Energy (eV)",
+            range=[0, filtered_data["ion_energy"].max() * 1.1]
+        )
         st.plotly_chart(fig, use_container_width=True)
 
     if "Primary vs Secondary Matching" in plot_options:
@@ -166,7 +185,7 @@ if not filtered_data.empty:
             x="primary_steps",
             y="secondary_steps",
             color="source_id",
-            hover_data=["pressure", "rf_power"]
+            hover_data=["pressure", "rf_power", "coil_current"]
         )
         fig.update_xaxes(title="Primary Matching Steps", range=[0, 2160])
         fig.update_yaxes(title="Secondary Matching Steps", range=[0, 2160])
